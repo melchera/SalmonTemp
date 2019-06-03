@@ -334,6 +334,11 @@ ggplot(lg_air_results) +
 
 ```
 
+```{r}
+#export final data
+write.csv(lg_air_results, "baseline.csv")
+
+```
 
 
 
