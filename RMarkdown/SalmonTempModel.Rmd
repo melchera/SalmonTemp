@@ -340,6 +340,32 @@ write.csv(lg_air_results, "baseline.csv")
 
 ```
 
+#Relative Temperature Contributions
+
+```{r}
+#S Clear Water Creek Contribution
+relative_contrib <- as.data.frame(matrix(nrow=365, ncol=4))
+colnames(relative_contrib)=c("date", "s_cwc_contrib", "snake_contrib", "lg_contrib")
+
+relative_contrib$date = lg_air_results$date
+relative_contrib$s_cwc_contrib = cw_mix_results$mix_cw_temp - temp_18$nfork_cw
+relative_contrib$snake_contrib = snake_mix_results$mix_sn_temp - cw_mix_results$mix_cw_temp
+relative_contrib$lg_contrib = lg_air_results$lg_temp_chg
+
+#graph
+ggplot(relative_contrib) +
+  geom_line(aes(x = date, y = s_cwc_contrib, color = "S Clear Water Creek")) +
+  geom_line(aes(x = date, y = snake_contrib, color = "Snake River")) +
+  geom_line(aes(x = date, y = lg_contrib, color = "Lower Granite Dam")) +
+  geom_hline(yintercept= 0)+
+  xlab("") +
+  ylab("Temperature (C)") +
+  ggtitle("Baseline Temperature Contributions") +
+  theme_classic()+
+  scale_color_manual(name = "Source", values = c("dark green", "red", "blue"))+
+  theme(legend.position = "top")
+
+```
 
 
 
