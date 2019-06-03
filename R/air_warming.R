@@ -1,6 +1,6 @@
 #' air_warming
 #'
-#' This function calculates the warming of a river at a run-of-the-river dam from a non-stratifying reservoir with equal inflow and outflow.
+#' This function calculates the warming of a river at a run-of-the-river dam from a non-stratifying reservoir with equal inflow and outflow. Default physical parameters are for Lewiston, Idaho.
 #' @param Tw Temperature of water (degrees Celsius)
 #' @param Ta Temperature of air (degrees Celsius)
 #' @param flow Inflow of water into the reservoir (cubic feet per second)
