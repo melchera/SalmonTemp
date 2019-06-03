@@ -282,12 +282,58 @@ ggplot() +
   ggtitle("Mixing of the Snake and Clearwater River\n") +
   geom_hline(yintercept= 18)+
   theme_classic()+
-  scale_fill_discrete(name = "River", labels = c("Dworshack Outflow", "S Fork Clearwater", "Mixed Clearwater"))
+  scale_color_manual(name = "River Segment", values = c("black", "red", "blue"))+
 
 
 ```
 
 
+```{r}
+#warming in lower granit reservoir
+#load function
+source("../R/air_warming.R")
+
+#load air temperature data
+lewiston_temp <- read_csv("../Data/lewiston_climate_data.csv")
+
+#convert air temperature to celsius
+lewiston_temp$Ta_avg <- round((lewiston_temp$TAVG-32)*(5/9), 2)
+
+#filter for just 2018 data
+air_temp <- lewiston_temp %>% 
+  filter(YEAR == 2018) %>% 
+  select(Ta_avg)
+
+#run function to determine change in water temperature from reservoir heat fluxes
+lg_airmod = air_warming(Tw = snake_mix_results$mix_sn_temp, Ta = air_temp, flow = snake_mix_results$mix_sn_flow)
+
+#make water temperature change results into a dataframe
+lg_air_chg_temp = round(unlist(lg_airmod[[1]]), 2)
+
+#populate the results matrix we created to include flow, water temperature change, and final water temperature (in temperature plus change)
+lg_air_results <- as.data.frame(matrix(nrow=365, ncol=4))
+colnames(lg_air_results)=c("date", "flow", "lg_temp_chg", "lg_temp_final")
+
+lg_air_results$date <- snake_mix_results$date
+lg_air_results$flow <- snake_mix_results$mix_sn_flow
+lg_air_results$lg_temp_chg <- lg_air_chg_temp
+lg_air_results$lg_temp_final <- snake_mix_results$mix_sn_temp + lg_air_results$lg_temp_chg
+
+#view results
+lg_air_results
+
+#plot temperature output
+ggplot(lg_air_results) +
+  geom_line(data = snake_mix_results, aes(x = date, y = mix_sn_temp, color = "Inflow")) +
+  geom_line(aes(x = date, y = lg_temp_final, color = "Outflow")) +
+  xlab("") +
+  ylab("Temperature (C)") +
+  ggtitle("Warming in Lower Granite Reservoir\n") +
+  geom_hline(yintercept= 18)+
+  theme_classic()+
+  scale_color_manual(name = "River Segment", values = c("blue", "red"))
+
+```
 
 
 
