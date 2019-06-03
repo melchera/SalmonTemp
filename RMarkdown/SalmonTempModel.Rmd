@@ -209,7 +209,7 @@ colnames(cw_mix_results)=c("date","mix_cw_flow", "mix_cw_temp")
 
 cw_mix_results$date <- temp_18$Date
 
-cw_mixmod = mapply(FUN=mix, Q1=dworshack_flow$total_outflow, Q2 = flow_18$sfork_cw, T1 = temp_18$nfork_cw, T2 = temp_18$sfork_cw)
+cw_mixmod = mapply(FUN=mix, Q1=flow_18$nfork_cw, Q2 = flow_18$sfork_cw, T1 = temp_18$nfork_cw, T2 = temp_18$sfork_cw)
 
 mix_res = as.data.frame(matrix(unlist(cw_mixmod), ncol=2, byrow=T))
 colnames(mix_res) = c("temp", "flow")
@@ -235,6 +235,9 @@ ggplot() +
   ggtitle("Mixing in the Clearwater River\n") +
   theme_classic()+
   scale_fill_discrete(name = "River", labels = c("Dworshack Outflow", "S Fork Clearwater", "Mixed Clearwater"))
+
+
+
 
 
 ```
