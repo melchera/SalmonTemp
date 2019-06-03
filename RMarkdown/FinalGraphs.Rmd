@@ -1,0 +1,82 @@
+---
+title: "Final Graphs"
+author: "Austin Melcher"
+date: "June 3, 2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+```{r}
+library(tidyverse)
+
+#read in baseline temperature data
+baseline_temp <- read_csv("baseline.csv") %>% 
+  select(date, lg_temp_final)
+colnames(baseline_temp)=c("date", "baseline_temp")
+
+#read in dworshak temperature data
+dworshak_temp <- read_csv(".csv")
+colnames(dworshak_temp)=c("date", "temp_10_perc", "temp_20_perc", "temp_30_perc")
+
+#read in dworshak power generation data
+dworshak_power_profit <- read_csv(".csv")
+colnames(dworshak_power_profit)=c("flow_10_perc", "flow_20_perc", "flow_30_perc")
+
+#read in -2 C Snake River temperature data
+snake_2C_temp <- read_csv(".csv")
+colnames(snake_2C_temp)=c("date", "temp_2C")
+
+#read in +2C air temperature data
+air_2C_temp <- read_csv(".csv")
+colnames(air_2C_temp)=c("date", "temp_2C")
+
+```
+
+```{r}
+#graph final water temperature at lower granite dam outlet for baseline, increased dworshak flows (choose one scenario only for this part), decreased snake river temperature, and increased air temperature (due to climate change)
+#graph
+ggplot() +
+  geom_line(data = baseline_temp, aes(x = date, y = baseline_temp, color = "Baseline")) +
+  geom_line(data = dworshak_temp, aes(x = date, y = temp_20_perc, color = "Dworshak Increased Flow")) +
+  geom_line(data = snake_2C_temp, aes(x = date, y = temp_2c, color = "Snake River Decreased Temperature")) +
+  geom_line(data = air_2C_temp, aes(x = date, y = air_2c, color = "Climate Change (+2 Celsius)")) +
+  geom_hline(yintercept= 18)+
+  xlab("") +
+  ylab("Temperature (C)") +
+  ggtitle("Temperature With Different Scenarios") +
+  theme_classic()+
+  scale_color_manual(name = "Source", values = c("black", "blue", "dark green", "red"))+
+  theme(legend.position = "top")
+
+```
+
+```{r}
+#graph change in final water temperature at lower granite dam outlet for differen dworshak flow scenarios
+ggplot() +
+  geom_line(data = dworshak_temp, aes(x = date, y = temp_0_perc, color = "Baseline Flow")) +
+  geom_line(data = dworshak_temp, aes(x = date, y = temp_10_perc, color = "10% Flow Increase")) +
+  geom_line(data = dworshak_temp, aes(x = date, y = temp_20_perc, color = "20% Flow Increase")) +
+  geom_line(data = dworshak_temp, aes(x = date, y = temp_30_perc, color = "30% Flow Increase")) +
+  geom_hline(yintercept= 18)+
+  xlab("") +
+  ylab("Temperature (C)") +
+  ggtitle("Temperature With Different Flows From Dworshake Dam") +
+  theme_classic()+
+  scale_color_manual(name = "Source", values = c("black", "light blue", "blue", "dark blue"))+
+  theme(legend.position = "top")
+
+#graph power generation profits for various dworshak flow scenarios
+ggplot(dworshak_power_profit)+
+  geom_bar()+
+  xlab("Flow Scenario")+
+  ylab("Profit")+
+  ggtitle("Profit From Dworshak Dam Power Generation With Different Flows")+
+  theme_classic()
+
+```
+
+
