@@ -170,7 +170,7 @@ library(lubridate)
 ```
 
 
-```{r, message = FALSE}
+```{r, message = FALSE, error=FALSE, warning = FALSE}
 
 
 temp_data <- read_excel("../Data/temp_flow_data.xlsx", 
@@ -237,21 +237,17 @@ ggplot() +
   scale_fill_discrete(name = "River", labels = c("Dworshack Outflow", "S Fork Clearwater", "Mixed Clearwater"))
 
 
-
-
-
 ```
 
 
 
 
 
-#Mix the mixed Clear Water with le Snake
+#Mix the mixed Clear Water with lower Snake
+
 
 ```{r}
-
-source("../R/mix.R")
-
+#mixing
 snake_mix_results <- as.data.frame(matrix(nrow=365, ncol=3))
 colnames(snake_mix_results)=c("date","mix_sn_flow", "mix_sn_temp")
 
@@ -282,8 +278,7 @@ ggplot() +
   ggtitle("Mixing of the Snake and Clearwater River\n") +
   geom_hline(yintercept= 18)+
   theme_classic()+
-  scale_color_manual(name = "River Segment", values = c("black", "red", "blue"))+
-
+  scale_fill_discrete(name = "River", labels = c("Snake River", "Clear Water Creek", "Mixed Snake River"))
 
 ```
 
@@ -331,7 +326,7 @@ ggplot(lg_air_results) +
   ggtitle("Warming in Lower Granite Reservoir\n") +
   geom_hline(yintercept= 18)+
   theme_classic()+
-  scale_color_manual(name = "River Segment", values = c("blue", "red"))
+  scale_color_manual(name = "Location", values = c("blue", "red"))
 
 ```
 
