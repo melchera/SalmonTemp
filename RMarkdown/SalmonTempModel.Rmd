@@ -326,7 +326,7 @@ ggplot(lg_air_results) +
   ggtitle("Warming in Lower Granite Reservoir\n") +
   geom_hline(yintercept= 18)+
   theme_classic()+
-  scale_color_manual(name = "Location", values = c("pink", "red"))
+  scale_color_manual(name = "Location", values = c("purple", "red"))
 
 ```
 
