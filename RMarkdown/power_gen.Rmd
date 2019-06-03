@@ -1,0 +1,185 @@
+---
+title: "Dworshack_2018data"
+author: "Savannah Tjaden"
+date: "5/22/2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(tidyverse)
+library(readr)
+
+
+```
+
+
+```{r}
+
+#load elevation data
+dworshack_elv <- read_csv("../Data/dworshack_elv.csv") 
+
+#load flow data
+dworshack_flow <- read_csv("../Data/dworshack_flow.csv")
+
+
+```
+
+
+
+Calculate the head available for power generation
+
+head = forebay elevation (ft) - tailwater elevation (ft)
+
+```{r}
+
+# create new column that calculates head and remove NAs
+dworshack_head <- dworshack_elv %>% 
+  mutate(head = (forebay_elv - tailwater_elv)) %>% 
+  select(date, head) %>% 
+  na.omit() 
+
+
+# convert head from ft to m
+dworshack_head <- mutate(dworshack_head, head_m = dworshack_head$head*0.305)
+
+
+
+
+```
+
+
+Calculate flow for power generation. This could be an input parameter, but then there would be no change in power generation when outflows values are changed. 
+
+power generation flow = total outflow (kcfs) - spill (kcfs) - losses(kcfs)
+
+```{r}
+
+#create column with claculated flow for power gen
+
+#start with 5% loss
+perc_loss = 0.05
+
+all_power_flow <- dworshack_flow %>% 
+  mutate(calc_power_flow = (total_outflow - spill_flow)) %>% 
+  mutate(losses = calc_power_flow*perc_loss)
+
+power_flow <- all_power_flow %>% 
+  mutate(power_flow_wlosses = calc_power_flow - losses) 
+
+
+#convert kcfs to m3/s 
+power_flow <- power_flow %>% 
+  select(date, total_outflow, spill_flow, calc_power_flow, power_flow_wlosses) %>% 
+  mutate(total_outflow_m3s = (total_outflow * 28.32)) %>% 
+  mutate(spill_flow_m3s = spill_flow * 28.32) %>% 
+  mutate(calc_power_flow_m3s = calc_power_flow * 28.32) %>% 
+  mutate(power_flow_wlosses_m3s = power_flow_wlosses * 28.32)
+
+
+
+```
+
+
+Merge final inputs into single df
+
+```{r}
+
+flow_inputs <- power_flow %>% 
+  select(date, total_outflow_m3s, spill_flow_m3s, calc_power_flow_m3s, power_flow_wlosses_m3s) 
+
+
+head_inputs <- dworshack_head %>% 
+  select(date, head_m)
+  
+historic_inputs <- merge(flow_inputs, head_inputs)
+
+historic_inputs$date <- as.Date(historic_inputs$date, "%m/%d/%Y")
+
+
+```
+
+
+
+Try running power gen model with flows not accounting for losses
+
+```{r}
+
+source("../R/dshack_powergen.R")
+
+
+test_data <- historic_inputs %>% 
+  select(date, calc_power_flow_m3s, power_flow_wlosses_m3s, head_m) %>% 
+  mutate(date = ymd(date)) %>% 
+  mutate_at(vars(date), funs(year, month, day)) %>% 
+  filter(year == 2018)
+
+
+reservoir_model_res= as.data.frame(matrix(nrow=365, ncol=6))
+colnames(reservoir_model_res)=c("date", "head","flowrate_noloss","power_noloss", "flowrate_wloss","power_wloss")
+
+reservoir_model_res$date = test_data$date
+reservoir_model_res$head = test_data$head_m
+reservoir_model_res$flowrate_noloss = test_data$calc_power_flow_m3s
+reservoir_model_res$flowrate_wloss = test_data$power_flow_wlosses_m3s
+
+reservoir_model_res$power_noloss = mapply(FUN=max_power, head =reservoir_model_res$head, flow=reservoir_model_res$flowrate_noloss)
+
+reservoir_model_res$power_wloss = mapply(FUN=max_power, head =reservoir_model_res$head, flow=reservoir_model_res$flowrate_wloss)
+
+
+#umultiply final result by 2.5. Theere are 3 generators/turbines in the dam. They are not always operational and not always at full capactiy. The value of 2.5 provides a good match to observed data.  
+reservoir_model_res <- mutate(reservoir_model_res, power_noloss_MW = ((power_noloss/100000)*2.5))
+reservoir_model_res <- mutate(reservoir_model_res, power_wloss_MW = ((power_wloss/100000)*2.5))
+
+
+#plot results
+
+ggplot(reservoir_model_res)+
+  geom_line(aes(x=date, y=power_noloss_MW))+
+  geom_line(aes(x=date, y= power_wloss_MW), color = 'red')
+
+
+
+```
+
+
+Check if modeled values are close to actual power generation values in 2018
+
+```{r}
+
+powergen_2018 <- read_csv("../Data/powergen_2018.csv")
+colnames(powergen_2018) = c("date", "measured_power")
+powergen_2018$date <- as.Date(powergen_2018$date, "%m/%d/%Y")
+
+
+
+ggplot()+
+  #geom_line(data = reservoir_model_res, aes(x=date, y=power_noloss_MW, color = "no losses")) +
+  geom_line(data = reservoir_model_res, aes(x=date, y=power_wloss_MW, color= "with losses (5%)")) +
+  geom_line(data = powergen_2018, aes(x= date, y=measured_power, color = "observed"))
+  
+
+
+
+
+```
+
+Model is way over predicting power generation. 
+
+Compare flow rates with losses and without losses. Looks like with losses is a significant amount of flow..
+```{r}
+
+ggplot() +
+  geom_line(data = test_data, aes(x=date, y= calc_power_flow_Ls))+
+  geom_line(data = test_data, aes(x=date, y= power_flow_wlosses_Ls), color = 'red')
+  
+
+
+```
+
+
+
+Try again accoutning for losses:
+

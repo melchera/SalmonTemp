@@ -1,0 +1,180 @@
+---
+title: "Mixing"
+author: "Savannah Tjaden"
+date: "5/28/2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+```{r}
+
+library(tidyverse)
+library(readr)
+library(readxl)
+library(lubridate)
+
+```
+
+```{r}
+
+
+temp_data <- read_excel("../Data/temp_flow_data.xlsx", 
+    sheet = "temp", col_types = c("date", 
+        "numeric", "numeric", "numeric"))
+
+
+flow_data <- read_excel("../Data/temp_flow_data.xlsx", 
+    sheet = "flow", col_types = c("date", 
+        "numeric", "numeric", "numeric"))
+
+```
+
+
+```{r}
+
+#plot temp over 1 year
+temp_18 <- temp_data %>% 
+  mutate(date = ymd(Date)) %>% 
+  mutate_at(vars(Date), funs(year, month, day)) %>% 
+  filter(year == 2018)
+
+temp_18$date <- as.POSIXct(temp_18$date)
+
+temp_18
+
+
+
+
+ggplot() +
+  geom_line(data = temp_18, aes(x= Date, y= nfork_cw, color = 'Dworshack Outflow')) +
+  geom_line(data = temp_18, aes(x= Date, y= sfork_cw, color = 'Clearwater River')) +
+  geom_line(data = temp_18, aes(x= Date, y= snake, color = 'Snake River')) +
+  geom_hline(yintercept = 18) +
+  geom_rect(xmin= '2018-06-01', xmax= '2018-09-31', ymin=-Inf, ymax=Inf, alpha = 0.4) +
+  xlab("") +
+  ylab("Temperatuce (C)") +
+  ggtitle("Temperature in Key River Segments Above Lower Granite Dam\n") +
+  theme_classic()
+
+
+#plot flow over 1 year
+flow_18 <- flow_data %>% 
+  mutate(date = ymd(Date)) %>% 
+  mutate_at(vars(Date), funs(year, month, day)) %>% 
+  filter(year == 2018)
+
+flow_18$date <- as.POSIXct(flow_18$date)
+
+ggplot() +
+  geom_line(data = flow_18, aes(x= Date, y= nfork_cw, color = 'Dworshack Outflow')) +
+  geom_line(data = flow_18, aes(x= Date, y= sfork_cw, color = 'Clearwater River')) +
+  geom_line(data = flow_18, aes(x= Date, y= snake, color = 'Snake River')) +
+  xlab("") +
+  ylab("Flow (cfs)") +
+  ggtitle("Flow in Key River Segments Above Lower Granite Dam\n") +
+  theme_classic()
+
+
+```
+
+
+#Mix North fork of clearwater with south fork of clearwater
+
+```{r}
+
+source("../R/mix.R")
+
+cw_mix_results <- as.data.frame(matrix(nrow=365, ncol=3))
+colnames(cw_mix_results)=c("date","mix_cw_flow", "mix_cw_temp")
+
+cw_mix_results$date <- temp_18$Date
+
+cw_mixmod = mapply(FUN=mix, Q1=flow_18$nfork_cw, Q2 = flow_18$sfork_cw, T1 = temp_18$nfork_cw, T2 = temp_18$sfork_cw)
+
+mix_res = as.data.frame(matrix(unlist(cw_mixmod), ncol=2, byrow=T))
+colnames(mix_res) = c("temp", "flow")
+
+
+cw_mix_results$mix_cw_temp <- mix_res$temp
+cw_mix_results$mix_cw_temp <- round(cw_mix_results$mix_cw_temp, 2)
+cw_mix_results$mix_cw_flow <- mix_res$flow
+
+
+cw_mix_results
+
+#plot with river segments
+
+ggplot() +
+  geom_line(data = temp_18, aes(x= Date, y= nfork_cw), color = 'blue') +
+  geom_line(data = temp_18, aes(x= Date, y= sfork_cw), color = 'red') +
+  geom_line(data = cw_mix_results, aes(x= date, y= mix_cw_temp), color = 'purple') +
+  geom_hline(yintercept= 18)+
+  xlab("") +
+  ylab("Temperature (C)") +
+  ggtitle("Mixing in the Clearwater River\n") +
+  theme_classic()+
+  scale_fill_discrete(name = "River", labels = c("Dworshack Outflow", "S Fork Clearwater", "Mixed Clearwater"))
+
+```
+
+
+#Mix the mixed clear water with le Snake
+
+
+```{r}
+
+source("../R/mix.R")
+
+snake_mix_results <- as.data.frame(matrix(nrow=365, ncol=3))
+colnames(snake_mix_results)=c("date","mix_sn_flow", "mix_sn_temp")
+
+snake_mix_results$date <- temp_18$Date
+
+snake_mixmod = mapply(FUN=mix, Q1=flow_18$snake, Q2 = cw_mix_results$mix_cw_flow, T1 = temp_18$snake, T2 = cw_mix_results$mix_cw_temp)
+
+mix_res_snake = as.data.frame(matrix(unlist(snake_mixmod), ncol=2, byrow=T))
+colnames(mix_res_snake) = c("temp", "flow")
+
+
+snake_mix_results$mix_sn_temp <- mix_res_snake$temp
+snake_mix_results$mix_sn_temp <- round(snake_mix_results$mix_sn_temp, 2)
+snake_mix_results$mix_sn_flow <- mix_res_snake$flow
+
+
+snake_mix_results
+
+
+#plot with river segments
+
+ggplot() +
+  geom_line(data = temp_18, aes(x= Date, y= snake), color = 'red') +
+  geom_line(data = cw_mix_results, aes(x= date, y= mix_cw_temp), color = 'purple') +
+  geom_line(data = snake_mix_results, aes(x= date, y= mix_sn_temp), color = 'pink') +
+  xlab("") +
+  ylab("Temperature (C)") +
+  ggtitle("Mixing of the Snake and Clearwater River\n") +
+  geom_hline(yintercept= 18)+
+  theme_classic()+
+  scale_fill_discrete(name = "River", labels = c("Dworshack Outflow", "S Fork Clearwater", "Mixed Clearwater"))
+
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

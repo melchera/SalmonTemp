@@ -8,96 +8,279 @@ output: html_document
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 ```
-#Notes
--Baseline data: use average monthly data (streamflow and temperature) for the average of 5 water years from 2014-2018 --> this is the highest generality/aggregation that can avoid the variability of flow and temperature data on smaller times steps, but that is still relevant to salmon migration (monthly data captures seasonal migration)
-Example:
-M Q T
-1 3 18
-2 5 17
-3 9 14
-4 7 16
-......
 
 
 
+There are 5 general steps to this model:
+
+1. Cold water is released from Dworshack dam (North Fork of the Clearwater River) and generates power
+
+2. The cold water released from Dworshack dam (the North Fork of the Clearwater River) mixes with the warm water of the mainstem of the Clearwater River
+
+3. The mixed Clearwater River mixes with the warm water of the Middle Fork of the Snake River
+
+4. The mixed Snake River water enters the forebay of Lower Granite Dam where it is warmed by solar radiation
+
+5. Water is released from Lower Granite Dam, which also generates power
 
 
+Model is first completed using input data from 2018. This shows us the relative contribution of temperature sources in the system.
+
+Later the individual parameters are changed to understand how changes to the system may impact temperature:
+  - increased release of water from dworshack August-October
+  - temperature decrease on the Snake River (decrease by 2 degrees)
+  - if air temp increase by 2 degrees C, how much does that change warming in the reservoir
+
+# Step 1: Cold Water is released from Dworshack Dam and generates power
+
+##Load libraries and data
 ```{r}
-#Load packages
+
 library(tidyverse)
-library(deSolve)
-
-```
-
-#Baseline Model Run
-```{r}
-#Load Dworshack Reservoir streamflow and temperature data
-dworshack <- read_csv()
-
-#Wrangle data
-
-#Load the South Clear Water River streamflow and temperature data
-s_clear_water <- read_csv()
-
-#Wrangle data
+library(readr)
 
 ```
 
 ```{r}
-#Mixing of Dworshack and South Clear Water River
+
+#load elevation data
+dworshack_elv <- read_csv("../Data/dworshack_elv.csv") 
+
+#load flow data
+dworshack_flow <- read_csv("../Data/dworshack_flow.csv") %>% 
+  mutate(date = ymd(date)) %>% 
+  mutate_at(vars(date), funs(year, month, day)) %>% 
+  filter(year == 2018)
+
+```
+
+
+## Calculate power generation model inputs
+
+### Calculate head and convert from ft to m
+head (ft) = forebay elevation (ft) - tailwater elevation (ft)
+
+```{r}
+
+# create new column that calculates head and remove NAs
+dworshack_head <- dworshack_elv %>% 
+  mutate(head = (forebay_elv - tailwater_elv)) %>% 
+  select(date, head) %>% 
+  na.omit() 
+
+# convert head from ft to m
+dworshack_head <- mutate(dworshack_head, head_m = dworshack_head$head*0.305)
+
+```
+
+### Calculate flow for power generation and convert to m3/s 
+
+This could be an input parameter (observed data exists), but then there would be no change in power generation when outflow values are changed. 
+
+flow availabile for power generation (kcfs) = total outflow (kcfs) - spill (kcfs) - losses(kcfs)
+
+```{r}
+
+#create column with flows avaialble for power generation assuming 5% loss
+
+perc_loss = 0.05 #start with 5% loss
+
+
+power_flow <- dworshack_flow %>% 
+  mutate(calc_power_flow = (total_outflow - spill_flow)) %>% 
+  mutate(losses = calc_power_flow*perc_loss) %>% 
+  mutate(power_flow_wlosses = calc_power_flow - losses) 
+
+#convert kcfs to m3/s 
+power_flow <- power_flow %>% 
+  select(date, total_outflow, spill_flow, power_flow_wlosses) %>% 
+  mutate(total_outflow_m3s = (total_outflow * 28.32)) %>% 
+  mutate(spill_flow_m3s = spill_flow * 28.32) %>% 
+  mutate(power_flow_wlosses_m3s = power_flow_wlosses * 28.32)
+
+
+```
+
+
+### Merge final historic data inputs for power gneration at Dworshack into single data frame
+
+```{r}
+
+# keep flow inputs with correct units
+flow_inputs <- power_flow %>% 
+  select(date, total_outflow_m3s, spill_flow_m3s, power_flow_wlosses_m3s) 
+
+head_inputs <- dworshack_head %>% 
+  select(date, head_m)
+  
+historic_inputs <- merge(flow_inputs, head_inputs)
+historic_inputs$date <- as.Date(historic_inputs$date, "%m/%d/%Y")
+
+```
+
+
+## Run power generation model
+
+```{r}
+
+source("../R/dshack_powergen.R")
+
+test_data <- historic_inputs %>% 
+  select(date, power_flow_wlosses_m3s, head_m) %>% 
+  mutate(date = ymd(date)) %>% 
+  mutate_at(vars(date), funs(year, month, day)) %>% 
+  filter(year == 2018)
+
+reservoir_model_res= as.data.frame(matrix(nrow=365, ncol=4))
+colnames(reservoir_model_res)=c("date", "head","flowrate","power")
+
+reservoir_model_res$date = test_data$date
+reservoir_model_res$head = test_data$head_m
+reservoir_model_res$flowrate = test_data$power_flow_wlosses_m3s
+
+
+reservoir_model_res$power = mapply(FUN=max_power, head =reservoir_model_res$head, flow=reservoir_model_res$flowrate)
+
+
+#umultiply final result by 2.5. Theere are 3 generators/turbines in the dam. They are not always operational and not always at full capactiy. The value of 2.5 provides a good match to observed data.  
+reservoir_model_res <- mutate(reservoir_model_res, power_MW = ((power/100000)*2.5))
+
+
+```
+
+
+# Step 2: Water from Dworshack dam (the North Fork of the Clearwater River) mixes with the mainstem of the Clearwater River
+
+```{r}
+
+library(tidyverse)
+library(readr)
+library(readxl)
+library(lubridate)
+
+```
+
+
+```{r}
+
+
+temp_data <- read_excel("../Data/temp_flow_data.xlsx", 
+    sheet = "temp", col_types = c("date", 
+        "numeric", "numeric", "numeric"))
+
+#North Fork Clearwater flows (release from Dworshack) come from Dworshack flows data in step 1
+flow_data <- read_excel("../Data/temp_flow_data.xlsx", 
+    sheet = "flow", col_types = c("date", 
+        "blank", "text", "text"))
+
+
+
+temp_18 <- temp_data %>% 
+  mutate(date = ymd(Date)) %>% 
+  mutate_at(vars(Date), funs(year, month, day)) %>% 
+  filter(year == 2018)
+
+flow_18 <- flow_data %>% 
+  mutate(date = ymd(Date)) %>% 
+  mutate_at(vars(Date), funs(year, month, day)) %>% 
+  filter(year == 2018)
+
+
+
+  
+
+
+```
+
+#Mix North fork of clearwater with south fork of clearwater
+
+```{r}
+
 source("../R/mix.R")
-main_seg_1 <- mix()
+
+cw_mix_results <- as.data.frame(matrix(nrow=365, ncol=3))
+colnames(cw_mix_results)=c("date","mix_cw_flow", "mix_cw_temp")
+
+cw_mix_results$date <- temp_18$Date
+
+cw_mixmod = mapply(FUN=mix, Q1=dworshack_flow$total_outflow, Q2 = flow_18$sfork_cw, T1 = temp_18$nfork_cw, T2 = temp_18$sfork_cw)
+
+mix_res = as.data.frame(matrix(unlist(cw_mixmod), ncol=2, byrow=T))
+colnames(mix_res) = c("temp", "flow")
+
+cw_mix_results$mix_cw_temp <- mix_res$temp
+cw_mix_results$mix_cw_temp <- round(cw_mix_results$mix_cw_temp, 2)
+cw_mix_results$mix_cw_flow <- mix_res$flow
+
+
+#view results
+cw_mix_results
+
+
+#plot temperature with river segments
+
+ggplot() +
+  geom_line(data = temp_18, aes(x= Date, y= nfork_cw), color = 'blue') +
+  geom_line(data = temp_18, aes(x= Date, y= sfork_cw), color = 'red') +
+  geom_line(data = cw_mix_results, aes(x= date, y= mix_cw_temp), color = 'purple') +
+  geom_hline(yintercept= 18)+
+  xlab("") +
+  ylab("Temperature (C)") +
+  ggtitle("Mixing in the Clearwater River\n") +
+  theme_classic()+
+  scale_fill_discrete(name = "River", labels = c("Dworshack Outflow", "S Fork Clearwater", "Mixed Clearwater"))
+
 
 ```
+
+
+
+
+
+#Mix the mixed Clear Water with le Snake
 
 ```{r}
-#Load Middle Snake River streamflow and temperature data
-mid_snake <- read_csv()
 
-#Wrangle data
+source("../R/mix.R")
+
+snake_mix_results <- as.data.frame(matrix(nrow=365, ncol=3))
+colnames(snake_mix_results)=c("date","mix_sn_flow", "mix_sn_temp")
+
+snake_mix_results$date <- temp_18$Date
+
+snake_mixmod = mapply(FUN=mix, Q1=flow_18$snake, Q2 = cw_mix_results$mix_cw_flow, T1 = temp_18$snake, T2 = cw_mix_results$mix_cw_temp)
+
+mix_res_snake = as.data.frame(matrix(unlist(snake_mixmod), ncol=2, byrow=T))
+colnames(mix_res_snake) = c("temp", "flow")
+
+
+snake_mix_results$mix_sn_temp <- mix_res_snake$temp
+snake_mix_results$mix_sn_temp <- round(snake_mix_results$mix_sn_temp, 2)
+snake_mix_results$mix_sn_flow <- mix_res_snake$flow
+
+
+snake_mix_results
+
+
+#plot with river segments
+
+ggplot() +
+  geom_line(data = temp_18, aes(x= Date, y= snake), color = 'red') +
+  geom_line(data = cw_mix_results, aes(x= date, y= mix_cw_temp), color = 'purple') +
+  geom_line(data = snake_mix_results, aes(x= date, y= mix_sn_temp), color = 'pink') +
+  xlab("") +
+  ylab("Temperature (C)") +
+  ggtitle("Mixing of the Snake and Clearwater River\n") +
+  geom_hline(yintercept= 18)+
+  theme_classic()+
+  scale_fill_discrete(name = "River", labels = c("Dworshack Outflow", "S Fork Clearwater", "Mixed Clearwater"))
+
 
 ```
 
-```{r}
-#Mixing of Main River Segment 1 with Middle Snake River
-source("..R/mix.R")
-main_seg_2 <- mix()
-
-```
-
-```{r}
-#Load air temperature data near Lower Granite Dam
-air_temp <- read_csv()
-
-#Wrangle data
-
-```
-
-```{r}
-#Model conduction heat gain of reservoir due to air temperature
-source("..R/air_conduction.R")
-lower_granite <- ode(y = , times = , func = air_conduction, parms = )
-
-```
-
-```{r}
-#Calculate Electrical Hydropower Generation
-source("..R/power_gen.R")
-hydropower <- power_gen()
-```
-
-```{r}
-#Visualize Results
-
-```
 
 
-#Sensitivity Analysis
-##Scenario 1: 
- 
-##Scenario 2:
 
-##Scenario 3:
 
-##Scenario 4:
- 
+
+

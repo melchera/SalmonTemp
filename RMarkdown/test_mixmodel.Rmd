@@ -1,0 +1,25 @@
+---
+title: "Untitled"
+author: "Savannah Tjaden"
+date: "5/15/2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+
+```{r}
+
+source("../R/mix.R")
+
+mix(Q1 = 10, Q2 = 20, T1 = 2, T2 = 2)
+
+
+
+```
+
+
+

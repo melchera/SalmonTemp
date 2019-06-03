@@ -1,0 +1,52 @@
+---
+title: "Residence time"
+author: "Savannah Tjaden"
+date: "5/29/2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(tidyverse)
+library(readr)
+library(readxl)
+library(lubridate)
+```
+
+
+```{r}
+
+flow_data <- read_excel("../Data/temp_flow_data.xlsx", 
+    sheet = "flow", col_types = c("date", 
+        "numeric", "numeric", "numeric"))
+
+flow_18 <- flow_data %>% 
+  mutate(date = ymd(Date)) %>% 
+  mutate_at(vars(Date), funs(year, month, day)) %>% 
+  filter(year == 2018)
+
+res_storage = 54300000
+
+snake_18 <- flow_18 %>% 
+  select(Date, snake)
+
+
+RT <- snake_mix_results %>% 
+  mutate(storage = res_storage) %>% 
+  mutate(flow_m3s = mix_sn_flow*0.02832) %>% 
+  mutate(RT_sec = storage/flow_m3s) %>% 
+  mutate(RT_day = RT_sec/86400)
+
+round(RT$RT_day, 2)
+
+
+ggplot(RT)+
+  geom_col(aes(x=date, y= RT_day))
+  
+  
+
+```
+
