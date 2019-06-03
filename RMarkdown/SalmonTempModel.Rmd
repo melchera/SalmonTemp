@@ -234,7 +234,8 @@ ggplot() +
   ylab("Temperature (C)") +
   ggtitle("Mixing in the Clearwater River\n") +
   theme_classic()+
-  scale_color_manual(name = "River", values = c("blue", "purple", "red"))
+  scale_color_manual(name = "River", values = c("blue", "purple", "red"))+
+  theme(legend.position = "top")
 
 
 ```
@@ -278,13 +279,15 @@ ggplot() +
   ggtitle("Mixing of the Snake and Clearwater River\n") +
   geom_hline(yintercept= 18)+
   theme_classic()+
-  scale_color_manual(name = "River", values = c("purple", "pink", "red"))
+  scale_color_manual(name = "River", values = c("purple", "pink", "red"))+
+  theme(legend.position = "top")
 
 ```
 
+#Warming in the Lower Granite Reservoir
 
 ```{r}
-#warming in lower granit reservoir
+#warming in lower granite reservoir
 #load function
 source("../R/air_warming.R")
 
