@@ -38,6 +38,8 @@ Later the individual parameters are changed to understand how changes to the sys
 
 library(tidyverse)
 library(readr)
+library(lubridate)
+library(readxl)
 
 ```
 
@@ -47,7 +49,7 @@ library(readr)
 dworshack_elv <- read_csv("../Data/dworshack_elv.csv") 
 
 #load flow data
-dworshack_flow <- read_csv("../Data/dworshack_flow.csv") %>% 
+dworshack_flow <- read_xls("../Data/dworshack_flow.xls") %>% 
   mutate(date = ymd(date)) %>% 
   mutate_at(vars(date), funs(year, month, day)) %>% 
   filter(year == 2018)
@@ -69,7 +71,11 @@ dworshack_head <- dworshack_elv %>%
   na.omit() 
 
 # convert head from ft to m
-dworshack_head <- mutate(dworshack_head, head_m = dworshack_head$head*0.305)
+dworshack_head <- mutate(dworshack_head, head_m = dworshack_head$head*0.305) 
+
+dworshack_head$date <- as.Date(dworshack_head$date, "%m/%d/%Y")
+
+
 
 ```
 
@@ -111,9 +117,12 @@ flow_inputs <- power_flow %>%
   select(date, total_outflow_m3s, spill_flow_m3s, power_flow_wlosses_m3s) 
 
 head_inputs <- dworshack_head %>% 
-  select(date, head_m)
+  select(date, head_m) %>% 
+  mutate(date = ymd(date)) %>% 
+  mutate_at(vars(date), funs(year, month, day)) %>% 
+  filter(year == 2018)
   
-historic_inputs <- merge(flow_inputs, head_inputs)
+historic_inputs <- merge(flow_inputs, head_inputs, by = "date")
 historic_inputs$date <- as.Date(historic_inputs$date, "%m/%d/%Y")
 
 ```
@@ -161,7 +170,7 @@ library(lubridate)
 ```
 
 
-```{r}
+```{r, message = FALSE}
 
 
 temp_data <- read_excel("../Data/temp_flow_data.xlsx", 
@@ -171,7 +180,7 @@ temp_data <- read_excel("../Data/temp_flow_data.xlsx",
 #North Fork Clearwater flows (release from Dworshack) come from Dworshack flows data in step 1
 flow_data <- read_excel("../Data/temp_flow_data.xlsx", 
     sheet = "flow", col_types = c("date", 
-        "blank", "text", "text"))
+        "numeric", "numeric", "numeric"))
 
 
 
@@ -185,9 +194,6 @@ flow_18 <- flow_data %>%
   mutate_at(vars(Date), funs(year, month, day)) %>% 
   filter(year == 2018)
 
-
-
-  
 
 
 ```
