@@ -58,7 +58,10 @@ ggplot() +
   xlab("") +
   ylab("Temperatuce (C)") +
   ggtitle("Temperature in Key River Segments Above Lower Granite Dam\n") +
-  theme_classic()
+  theme_classic()+
+  theme(legend.position = "top")
+
+ggsave("temp.png")
 
 
 #plot flow over 1 year
@@ -76,7 +79,10 @@ ggplot() +
   xlab("") +
   ylab("Flow (cfs)") +
   ggtitle("Flow in Key River Segments Above Lower Granite Dam\n") +
-  theme_classic()
+  theme_classic() +
+  theme(legend.position = "top")
+
+ggsave("flow.png")
 
 
 ```
