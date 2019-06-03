@@ -1,4 +1,11 @@
-
+#' air_warming
+#'
+#' This function calculates the amount of water temperature change from total heat flux for a non-stratifying reservoir, assuming water inflow and outflow are the same. Default physical/environmental values are for Lewiston, Idaho.
+#' @param Tw Temperature of incoming water (degrees Celsius)
+#' @param Ta Temperature of the air (degrees Celsius)
+#' @param flow Water inflow (assumed to be the same as outflow) (cubic feet per second)
+#' @examples air_warming(17, 22, 30000)
+#' @return dTw, change in water temperature (degrees Celsius)
 
 air_warming = function(Tw, Ta, flow) {
   
