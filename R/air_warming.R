@@ -9,7 +9,7 @@
 
 air_warming = function(Tw, Ta, flow) {
   
-  #------------------Celsius to Kelvin-------------
+  #------------------Celsius to Kelvin-----------------------
   Tw = Tw + 273.15 #convert from C to K
   Ta = Ta +273.15 #convert from C to K
   
