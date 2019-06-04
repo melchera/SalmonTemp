@@ -303,7 +303,7 @@ air_temp <- lewiston_temp %>%
   select(Ta_avg)
 
 #run function to determine change in water temperature from reservoir heat fluxes
-lg_airmod = air_warming(Tw = snake_mix_results$mix_sn_temp, Ta = air_temp2, flow = snake_mix_results$mix_sn_flow)
+lg_airmod = air_warming(Tw = snake_mix_results$mix_sn_temp, Ta = air_temp, flow = snake_mix_results$mix_sn_flow)
 
 #make water temperature change results into a dataframe
 lg_air_chg_temp = round(unlist(lg_airmod[[1]]), 2)
