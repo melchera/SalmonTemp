@@ -302,7 +302,6 @@ air_temp <- lewiston_temp %>%
   filter(YEAR == 2018) %>% 
   select(Ta_avg)
 
-air_temp2 = air_temp+2
 #run function to determine change in water temperature from reservoir heat fluxes
 lg_airmod = air_warming(Tw = snake_mix_results$mix_sn_temp, Ta = air_temp2, flow = snake_mix_results$mix_sn_flow)
 
@@ -337,7 +336,7 @@ ggplot(lg_air_results) +
 
 ```{r}
 #export final data
-write.csv(lg_air_results, "baseline2.csv")
+write.csv(lg_air_results, "baseline.csv")
 
 ```
 
