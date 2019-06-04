@@ -33,7 +33,7 @@ air_warming = function(Tw, Ta, flow) {
   Cl = 0.0015 #exchange coefficient
   U10 = 4 #m/s - wind speed at 10 meters above surface
   qs = 0.7 #saturation humidity at the water surface temperature
-  qa = 0.59 #relative humidity at 10 meters above surface
+  qa = 0.699 #relative humidity at 10 meters above surface
   
   Hl = rho_a * Lw * Cl * U10 *(qs - qa) #kJ/m^2*s
   Hl = Hl * 86400 #convert to kJ/m^2*day
@@ -45,13 +45,13 @@ air_warming = function(Tw, Ta, flow) {
   Hs = rho_a * Cp * Cs * U10 * (Tw - Ta) #kJ/m^2*s
   Hs = Hs * 86400 #convert to kJ/m^2*day
   ### H - Heat flux ###
-  H = Qsw + Qlw + Hl + Hs #kJ/m^2*day
+  H = Qsw - Qlw - Hl - Hs #kJ/m^2*day
   
   #-----------------Temperature Change Equation--------------
   #Stable parameters
   rho_w = 997 #kg/m^3 - density of water
   V = 54300000 #m^3 - volume of reservoir
-  A = 3000000 #m^2 - surface area of reservoir
+  A = 6388235 #m^2 - surface area of reservoir (volume divided by 8.5m [depth of river per USGS])
   
   ### residence time ###
   flow = flow * 0.028317 * 60 * 60 *24 #convert from ft^3/s to m^3/day
